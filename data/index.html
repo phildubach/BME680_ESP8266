@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf8">
+        <title>ESP Wetterstation</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="css/w3.css">
+        <style>
+            @media only screen and (min-width: 900px) {
+                body { width: 900px; margin: auto }
+            }
+            .loader {
+                width: 28px;
+                height: 28px;
+                display: inline-block;
+                vertical-align: text-top;
+                background-size: contain;
+
+            }
+            .loader-loading {
+                background-image: url("img/load.svg");
+            }
+        </style>
+        <script src="https://cdn.jsdelivr.net/npm/vue@2.5.17/dist/vue.js"></script>
+        <script type="text/javascript" src="js/140medley.min.js"></script>
+        <script type="text/javascript" src="js/humanize-duration.js"></script>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.bundle.min.js"></script>
+        <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.bundle.js"></script-->
+        <script type="text/javascript">
+        var vueApp;
+
+        function openTab(ident) {
+            var element = document.getElementById(ident);
+            if (!element) {
+                // default to the env tab
+                ident = "env";
+                element = document.getElementById(ident);
+            }
+            switch(ident) {
+                case "status":
+                    getStatus();
+                    break;
+                case "env":
+                    getEnv();
+                    break;
+                case "history":
+                    getHistory();
+                    break;
+            }
+            if (element) {
+                var tabs = document.getElementsByClassName("tab");
+                for (let tab of tabs) {
+                    tab.style.display = (tab === element) ? "block" : "none";
+                }
+            }
+        }
+
+        function setLoader(id, state) {
+            var element = document.getElementById(id);
+            if (element) {
+                var cn = "loader";
+                switch (state) {
+                    case "loading":
+                        cn += " loader-loading";
+                        break;
+                    case "error":
+                        cn += " loader-error";
+                        break;
+                    case "done":
+                        break;
+                }
+                element.className = cn;
+            }
+        }
+
+        function getStatus() {
+            xhr=j();
+            xhr.open("GET", "api/status");
+            xhr.onreadystatechange=function() {
+                if (xhr.readyState==4 && xhr.status>=200 && xhr.status<300) {
+                    var reply = JSON.parse(xhr.responseText);
+                    vueApp.properties.length = 0; // clear old data
+                    var property;
+                    reply.status.forEach(function(prop) {
+                        if (prop.type === "seconds") {
+                            prop.displayValue = humanizeDuration(prop.value*1000);
+                        }
+                        vueApp.properties.push(prop);
+                    });
+                    vueApp.properties.hostname = reply.hostname;
+                    vueApp.properties.ipaddr = reply.ipaddr;
+                    setLoader("status-loader", "done");
+                }
+            }
+            setLoader("status-loader", "loading");
+            xhr.send();
+        }
+
+        function getEnv() {
+            xhr=j();
+            xhr.open("GET", "api/env");
+            xhr.onreadystatechange=function() {
+                if (xhr.readyState==4 && xhr.status>=200 && xhr.status<300) {
+                    vueApp.env = JSON.parse(xhr.responseText);
+                    setLoader("env-loader", "done");
+                }
+            }
+            setLoader("env-loader", "loading");
+            xhr.send();
+        }
+
+        function getHistory() {
+            xhr=j();
+            xhr.open("GET", "api/history");
+            xhr.onreadystatechange=function() {
+                if (xhr.readyState==4 && xhr.status>=200 && xhr.status<300) {
+                    let response = JSON.parse(xhr.responseText);
+                    let history = response.history;
+                    let time = Date.now();
+                    let interval = response.interval;
+                    for (let entry of history) {
+                        entry.time = new Date(time);
+                        time -= interval;
+                    }
+                    vueApp.history = history;
+                    setLoader("history-loader", "done");
+                }
+            }
+            setLoader("history-loader", "loading");
+            xhr.send();
+        }
+
+        function init() {
+            vueApp = new Vue({
+                el: '#app',
+                data: {
+                    properties: [{ name: "Loading...", value: "Loading..." }],
+                    env: { temp: 0, pressure: 0, humidity: 0, gas: 0 },
+                    history: []
+                }
+            });
+            getStatus(); // obtain IP address and host name
+            var frag = window.location.hash.substring(1);
+            if (frag) {
+                openTab(frag);
+            } else {
+                openTab("env");
+            }
+        }
+    </script>
+    </head>
+    <body onload="init()">
+    <div id="app">
+        <div class="w3-bar w3-teal">
+           <div class="w3-bar-item">ESP Wetterstation</div>
+           <div class="w3-bar-item w3-right">{{ properties.ipaddr }}</div>
+           <div class="w3-bar-item w3-right">{{ properties.hostname }}</div>
+        </div>
+        <div class="w3-bar w3-black">
+            <button class="w3-bar-item w3-button" onclick="openTab('env')">BME680</button>
+            <button class="w3-bar-item w3-button" onclick="openTab('history')">History</button>
+            <button class="w3-bar-item w3-button" onclick="openTab('status')">Status</button>
+        </div>
+
+        <div id="env" class="tab w3-container">
+            <h2>Sensoren <span id="env-loader" class="loader loader-loading"></span></h2>
+            <table class="w3-table w3-striped w3-border">
+                <tr class="w3-teal">
+                    <th>Variable</th>
+                    <th>Wert</th>
+                </tr>
+                <tr>
+                    <td>Temperatur</td>
+                    <td>{{ env.temp }} &deg;C</td>
+                </tr>
+                <tr>
+                    <td>Luftdruck</td>
+                    <td>{{ env.pressure }} mbar</td>
+                </tr>
+                <tr>
+                    <td>Luftfeuchtigkeit</td>
+                    <td>{{ env.humidity }} %</td>
+                </tr>
+                <tr>
+                    <td>Luftqualität</td>
+                    <td>{{ env.gas }}</td>
+                </tr>
+            </table>
+            <div class="w3-bar">
+                <input class="w3-button w3-right w3-teal" type="submit" value="Reload" onclick="getEnv()" />
+            </div>
+        </div>
+
+        <div id="history" class="tab w3-container">
+            <h2>History <span id="history-loader" class="loader loader-loading"></span></h2>
+            <table class="w3-table w3-striped w3-border">
+                <tr class="w3-teal">
+                    <th>Zeit</th>
+                    <th>Temperatur</th>
+                    <th>Luftdruck</th>
+                    <th>Luftfeuchtigkeit</th>
+                    <th>Luftqualität</th>
+                </tr>
+                <tr v-for="entry in history">
+                    <td>{{ entry.time.toLocaleDateString() + " " + entry.time.toLocaleTimeString() }}</td>
+                    <td>{{ entry.temp }}</td>
+                    <td>{{ entry.pressure }}</td>
+                    <td>{{ entry.humidity }}</td>
+                    <td>{{ entry.gas }}</td>
+                </tr>
+            </table>
+            <div class="w3-bar">
+                <input class="w3-button w3-right w3-teal" type="submit" value="Reload" onclick="getHistory()" />
+            </div>
+        </div>
+
+        <div id="status" class="tab w3-container">
+            <h2>Status <span id="status-loader" class="loader loader-loading"></span></h2>
+            <table class="w3-table w3-striped w3-border">
+                <tr class="w3-teal">
+                    <th>Variable</th>
+                    <th>Wert</th>
+                </tr>
+                <tr v-for="prop in properties">
+                    <td>{{ prop.name }}</td>
+                    <td>{{ prop.displayValue ? prop.displayValue : prop.value }}</td>
+                </tr>
+            </table>
+            <div class="w3-bar">
+                <input class="w3-button w3-right w3-teal" type="submit" value="Reload" onclick="getStatus()" />
+            </div>
+        </div>
+    </div>
+    </body>
+</html>
