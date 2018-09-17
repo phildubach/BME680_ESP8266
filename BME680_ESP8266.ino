@@ -1,12 +1,29 @@
+#include <Arduino.h>
 #include <ArduinoOTA.h>
-#include <WiFiManager.h>
-#include <ESP8266WiFi.h>
-#include <ESP8266WebServer.h>
 #include <FS.h>
 #include <Adafruit_BME680.h>
 
+#if defined(ESP8266)
+
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+#include <WiFiManager.h>
+
 #define SCL D1
 #define SDA D2
+
+#elif defined (ESP32)
+
+#include <WiFi.h>
+#include <WebServer.h>
+#include <SPIFFS.h>
+
+// TODO: check pin assignments
+#define SCL 7
+#define SDA 8
+
+#endif
+
 
 #define LED_TOGGLE_PERIOD_MS 500
 //#define BME_SAMPLE_PERIOD_MS (60 * 1000L)
@@ -31,7 +48,12 @@ static unsigned int bmeHistoryCount = 0;
 
 #define SEALEVELPRESSURE_HPA (1013.25)
 
+#if defined(ESP8266)
 ESP8266WebServer server(80);
+#elif defined (ESP32)
+WebServer server(80);
+#endif
+
 
 #define SEND_BUFFER_LEN 1024
 static String sendBuffer = String();
@@ -139,7 +161,6 @@ void serveFile() {
 }
 
 void setup() {
-  WiFiManager wifiManager;
   sendBuffer.reserve(SEND_BUFFER_LEN);
 
   // initialize serial port
@@ -169,12 +190,17 @@ void setup() {
     bme.setGasHeater(320, 150); // 320*C for 150 ms
   }
 
+#if defined(ESP8266)
+  WiFiManager wifiManager;
   // connect to WiFi
   if (!wifiManager.autoConnect()) {
     Serial.println("WiFi autoconnect timed out; rebooting");
     ESP.restart();
     delay(1000);
   }
+#elif defined(ESP32)
+  // TODO: WiFi initialization with hardcoded password?
+#endif
 
   // initialize the over-the-air update server
   ArduinoOTA.begin();
