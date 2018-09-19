@@ -208,6 +208,8 @@ void setup() {
   // TODO: WiFi initialization with hardcoded password?
 #endif
 
+  WiFi.setSleepMode(WIFI_MODEM_SLEEP);
+
   // initialize the over-the-air update server
   ArduinoOTA.begin();
 
@@ -267,4 +269,5 @@ void loop() {
       }
     }
   }
+  delay(100);
 }
