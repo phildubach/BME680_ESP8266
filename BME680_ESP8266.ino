@@ -161,11 +161,17 @@ void serveFile() {
 }
 
 void setup() {
+  struct rst_info *resetInfo = ESP.getResetInfoPtr(); 
   sendBuffer.reserve(SEND_BUFFER_LEN);
 
   // initialize serial port
   Serial.begin(115200);
   Serial.println("\nReboot");
+
+  if (resetInfo->reason != REASON_DEEP_SLEEP_AWAKE) {
+    Serial.println("Initiating deep sleep");
+    ESP.deepSleep(ESP.deepSleepMax());
+  }
 
   // initialize (software) I2C bus for the given pins
   Wire.begin(SDA, SCL);
