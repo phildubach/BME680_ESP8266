@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <ArduinoOTA.h>
+#include <ArduinoJson.h>
 #include <FS.h>
 #include <Adafruit_BME680.h>
 
@@ -89,15 +90,14 @@ String getContentTypeFromName(String fileName) {
 }
 
 String getEnvironmentData() {
-  sendBuffer = "{\"temp\":";
-  sendBuffer += bme.temperature;
-  sendBuffer += ",\"pressure\":";
-  sendBuffer += bme.pressure/100.0;
-  sendBuffer += ",\"humidity\":";
-  sendBuffer += bme.humidity;
-  sendBuffer += ",\"gas\":";
-  sendBuffer += bme.gas_resistance / 1000.0;
-  sendBuffer += "}";
+  StaticJsonBuffer<128> jsonBuffer;
+  JsonObject& root = jsonBuffer.createObject();
+  root["temp"] = bme.temperature;
+  root["pressure"] = bme.pressure/100.0;
+  root["humidity"] = bme.humidity;
+  root["gas"] = bme.gas_resistance / 1000.0;
+  sendBuffer = "";
+  root.printTo(sendBuffer);
   return sendBuffer;
 }
 
@@ -114,15 +114,17 @@ void serveHistory() {
   int i = (bmeHistoryIndex - 1) % BME_HISTORY_LEN;
   while (toSend > 0) {
     toSend -= 1;
-    sendBuffer = "{\"temp\":";
-    sendBuffer += bmeHistory[i].temperature;
-    sendBuffer += ",\"pressure\":";
-    sendBuffer += bmeHistory[i].pressure/100.0;
-    sendBuffer += ",\"humidity\":";
-    sendBuffer += bmeHistory[i].humidity;
-    sendBuffer += ",\"gas\":";
-    sendBuffer += bmeHistory[i].gas / 1000.0;
-    sendBuffer += (toSend > 0) ? "}," : "}";
+    StaticJsonBuffer<128> jsonBuffer;
+    JsonObject& root = jsonBuffer.createObject();
+    root["temp"] = bmeHistory[i].temperature;
+    root["pressure"] = bmeHistory[i].pressure/100.0;
+    root["humidity"] = bmeHistory[i].humidity;
+    root["gas"] = bmeHistory[i].gas / 1000.0;
+    sendBuffer = "";
+    root.printTo(sendBuffer);
+    if (toSend > 0) {
+      sendBuffer += ",";
+    }
     server.sendContent(sendBuffer);
     i = (i - 1) % BME_HISTORY_LEN;
   }
@@ -133,14 +135,17 @@ void serveHistory() {
 }
 
 void serveStatus() {
-  sendBuffer = "{\"status\":[";
-  sendBuffer += "{\"name\":\"uptime\",\"value\":";
+  StaticJsonBuffer<200> jsonBuffer;
+  JsonObject& root = jsonBuffer.createObject();
+  root["ipaddr"] = WiFi.localIP().toString();
+  JsonArray& props = root.createNestedArray("status");
+  JsonObject& uptime = props.createNestedObject();
+  uptime["name"] = "uptime";
   // TODO: handle millis overflow
-  sendBuffer += millis()/1000;
-  sendBuffer += ",\"type\":\"seconds\"}";
-  sendBuffer += "],\"ipaddr\":\"";
-  sendBuffer += WiFi.localIP();
-  sendBuffer += "\"}";
+  uptime["value"] = millis() / 1000;
+  uptime["type"] = "seconds";
+  sendBuffer = "";
+  root.printTo(sendBuffer);
   server.send(200, MIME_JSON, sendBuffer);
 }
 
