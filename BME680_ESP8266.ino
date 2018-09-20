@@ -27,10 +27,9 @@
 
 
 #define LED_TOGGLE_PERIOD_MS 500
-//#define BME_SAMPLE_PERIOD_MS (60 * 1000L)
 #define BME_SAMPLE_PERIOD_MS (1000L)
-#define BME_HISTORY_THRESHOLD 10
-//#define BME_HISTORY_LEN (7L * 24 * 3600 * 1000 / (BME_HISTORY_THRESHOLD * BME_SAMPLE_PERIOD_MS))
+// interval is expressed as a multiple of BME_SAMPLE_PERIOD_MS
+#define BME_DEFAULT_HISTORY_INTERVAL 10
 #define BME_HISTORY_LEN 1000
 #define INVALID_TEMPERATURE -999
 
@@ -44,6 +43,7 @@ struct bmeSample_s {
 static struct bmeSample_s bmeHistory[BME_HISTORY_LEN];
 static unsigned int bmeHistoryIndex = 0;
 static unsigned int bmeHistoryCount = 0;
+static unsigned int bmeHistoryInterval = BME_DEFAULT_HISTORY_INTERVAL;
 
 #define MIME_JSON "application/json"
 
@@ -129,7 +129,7 @@ void serveHistory() {
     i = (i - 1) % BME_HISTORY_LEN;
   }
   sendBuffer = "],\"interval\":";
-  sendBuffer += BME_SAMPLE_PERIOD_MS * BME_HISTORY_THRESHOLD;
+  sendBuffer += BME_SAMPLE_PERIOD_MS * bmeHistoryInterval;
   sendBuffer += "}";
   server.sendContent(sendBuffer);
 }
@@ -144,6 +144,15 @@ void serveStatus() {
   // TODO: handle millis overflow
   uptime["value"] = millis() / 1000;
   uptime["type"] = "seconds";
+  sendBuffer = "";
+  root.printTo(sendBuffer);
+  server.send(200, MIME_JSON, sendBuffer);
+}
+
+void serveConfig() {
+  StaticJsonBuffer<128> jsonBuffer;
+  JsonObject& root = jsonBuffer.createObject();
+  root["historyInterval"] = bmeHistoryInterval;
   sendBuffer = "";
   root.printTo(sendBuffer);
   server.send(200, MIME_JSON, sendBuffer);
@@ -225,6 +234,7 @@ void setup() {
   server.on("/api/status", serveStatus);
   server.on("/api/env", serveEnvironmentData);
   server.on("/api/history", serveHistory);
+  server.on("/api/config", serveConfig);
   // on any URLs not listed above, try and fetch from FS
   server.onNotFound(serveFile);
   // start the web server
@@ -266,7 +276,7 @@ void loop() {
       Serial.println("Failed to perform reading :(");
       entry->temperature = INVALID_TEMPERATURE;
     }
-    if (++measurementCount >= BME_HISTORY_THRESHOLD) {
+    if (++measurementCount >= bmeHistoryInterval) {
       measurementCount = 0;
       bmeHistoryIndex = (bmeHistoryIndex + 1) % BME_HISTORY_LEN;
       if (bmeHistoryCount < BME_HISTORY_LEN) {
