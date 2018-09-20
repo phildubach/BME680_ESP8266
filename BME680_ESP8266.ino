@@ -67,28 +67,6 @@ struct mimeMap_s {
   const char* mimeType;
 };
 
-static const struct mimeMap_s mimeMap[] = {
-  { ".html", "text/html" },
-  { ".htm",  "text/html" },
-  { ".css",  "text/css" },
-  { ".js",   "application/javascript" },
-  { ".svg",  "image/svg+xml" },
-  { ".png",  "image/png" },
-  { ".gif",  "image/gif" },
-  { ".jpg",  "image/jpeg" },
-  { ".ico",  "image/ico" }
-};
-
-String getContentTypeFromName(String fileName) {
-  for (unsigned int i = 0; i < sizeof(mimeMap); i++) {
-    if (fileName.endsWith(mimeMap[i].extension)) {
-      return mimeMap[i].mimeType;
-    }
-  }
-  // no match found, assume plain text
-  return "text/plain";
-}
-
 String getEnvironmentData() {
   StaticJsonBuffer<128> jsonBuffer;
   JsonObject& root = jsonBuffer.createObject();
@@ -158,22 +136,6 @@ void serveConfig() {
   server.send(200, MIME_JSON, sendBuffer);
 }
 
-void serveFile() {
-  String path = server.uri();
-  Serial.println("Request for file: " + path);
-  if (path.endsWith("/")) {
-    path += "index.html";
-  }
-  if (SPIFFS.exists(path)) {
-    String contentType = getContentTypeFromName(path);
-    File file = SPIFFS.open(path, "r");
-    server.streamFile(file, contentType);
-    file.close();
-  } else {
-    server.send(404, "text/plain", "Not found: " + path);
-  }
-}
-
 void setup() {
   struct rst_info *resetInfo = ESP.getResetInfoPtr(); 
   sendBuffer.reserve(SEND_BUFFER_LEN);
@@ -235,8 +197,7 @@ void setup() {
   server.on("/api/env", serveEnvironmentData);
   server.on("/api/history", serveHistory);
   server.on("/api/config", serveConfig);
-  // on any URLs not listed above, try and fetch from FS
-  server.onNotFound(serveFile);
+  server.serveStatic("/", SPIFFS, "/");
   // start the web server
   server.begin();
 }
