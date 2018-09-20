@@ -44,6 +44,8 @@ static struct bmeSample_s bmeHistory[BME_HISTORY_LEN];
 static unsigned int bmeHistoryIndex = 0;
 static unsigned int bmeHistoryCount = 0;
 static unsigned int bmeHistoryInterval = BME_DEFAULT_HISTORY_INTERVAL;
+// remember number of measurements since last history entry
+static unsigned int measurementCount = 0;
 
 #define MIME_JSON "application/json"
 
@@ -128,7 +130,23 @@ void serveStatus() {
 }
 
 void serveConfig() {
-  StaticJsonBuffer<128> jsonBuffer;
+  StaticJsonBuffer<256> jsonBuffer;
+  if (server.method() == HTTP_PUT) {
+    String postData = server.arg("plain");
+    if (postData != NULL) {
+        JsonObject& root = jsonBuffer.parseObject(postData, 1);
+        unsigned int interval = root.get<unsigned int>("historyInterval");
+        jsonBuffer.clear();
+        if (interval != 0) {
+            if (bmeHistoryInterval - measurementCount > interval) {
+                // remaining time to next record is greater than the new
+                // interval; shorten to new interval
+                measurementCount = 0;
+            }
+            bmeHistoryInterval = interval;
+        }
+    }
+  }
   JsonObject& root = jsonBuffer.createObject();
   root["historyInterval"] = bmeHistoryInterval;
   sendBuffer = "";
@@ -207,8 +225,6 @@ void loop() {
   static unsigned long lastLedToggle = 0;
   // remember the last time a measurement was made
   static unsigned long lastMeasure = 0;
-  // remember number of measurements since last history entry
-  static unsigned int measurementCount = 0;
 
   // let the web server handle outstanding requests
   server.handleClient();

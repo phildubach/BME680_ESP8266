@@ -45,6 +45,9 @@
                 case "history":
                     getHistory();
                     break;
+                case "config":
+                    getConfig();
+                    break;
             }
             if (element) {
                 var tabs = document.getElementsByClassName("tab");
@@ -88,6 +91,31 @@
             });
         }
 
+        function getConfig(save = false) {
+            setLoader("config-loader", "loading");
+            let promise;
+            if (save) {
+                promise = axios.put("/api/config", vueApp.localConfig);
+            } else {
+                promise = axios.get("/api/config");
+            }
+            promise.then(function(response) {
+                if ("historyInterval" in response.data) {
+                    let value = response.data.historyInterval;
+                    vueApp.serverConfig.historyInterval = value;
+                    vueApp.serverConfig.standard = false;
+                    for (let option of vueApp.historyIntervalOptions) {
+                        if (option.value == value) {
+                            vueApp.serverConfig.standard = true;
+                            break;
+                        }
+                    }
+                    vueApp.localConfig.historyInterval = value;
+                }
+                setLoader("config-loader", "done");
+            });
+        }
+
         function getEnv() {
             setLoader("env-loader", "loading");
             axios.get("/api/env").then(function(response) {
@@ -117,7 +145,15 @@
                 data: {
                     properties: [{ name: "Loading...", value: "Loading..." }],
                     env: { temp: 0, pressure: 0, humidity: 0, gas: 0 },
-                    history: []
+                    history: [],
+                    serverConfig: { historyInterval: 10, standard: true },
+                    localConfig: { historyInterval: 10 },
+                    historyIntervalOptions: [
+                        { name: "10 s", value: 10 },
+                        { name: "1 min", value: 60 },
+                        { name: "10 min", value: 600 },
+                        { name: "1 h", value: 3600 }
+                    ]
                 }
             });
             getStatus(); // obtain IP address and host name
@@ -141,6 +177,7 @@
             <button class="w3-bar-item w3-button" onclick="openTab('env')">BME680</button>
             <button class="w3-bar-item w3-button" onclick="openTab('history')">History</button>
             <button class="w3-bar-item w3-button" onclick="openTab('status')">Status</button>
+            <button class="w3-bar-item w3-button" onclick="openTab('config')">Config</button>
         </div>
 
         <div id="env" class="tab w3-container">
@@ -209,6 +246,31 @@
             </table>
             <div class="w3-bar">
                 <input class="w3-button w3-right w3-teal" type="submit" value="Reload" onclick="getStatus()" />
+            </div>
+        </div>
+
+        <div id="config" class="tab w3-container">
+            <h2>Konfiguration <span id="config-loader" class="loader loader-loading"></span></h2>
+            <table class="w3-table w3-striped w3-border">
+                <tr class="w3-teal">
+                    <th>Variable</th>
+                    <th>Wert</th>
+                </tr>
+                <tr>
+                    <td>Aufzeichnungsintervall</td>
+                    <td>
+                        <select v-model="localConfig.historyInterval">
+                            <option v-if="!serverConfig.standard" disabled value="{{serverConfig.historyInterval}}">
+                                Unverändert ({{serverConfig.historyInterval}} s)
+                            </option>
+                            <option v-for="option in historyIntervalOptions" v-bind:value="option.value">{{option.name}}</option>
+                        </select>
+                    </td>
+                </tr>
+            </table>
+            <div class="w3-bar">
+                <input class="w3-button w3-right w3-teal" type="submit" value="Reload" onclick="getConfig()" />
+                <input class="w3-button w3-right w3-teal" type="submit" value="Save" onclick="getConfig(true)" />
             </div>
         </div>
     </div>
