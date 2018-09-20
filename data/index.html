@@ -21,11 +21,10 @@
                 background-image: url("img/load.svg");
             }
         </style>
-        <script src="https://cdn.jsdelivr.net/npm/vue@2.5.17/dist/vue.js"></script>
-        <script type="text/javascript" src="js/140medley.min.js"></script>
-        <script type="text/javascript" src="js/humanize-duration.js"></script>
-        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.bundle.min.js"></script>
-        <!--script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.bundle.js"></script-->
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.5.17/vue.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.18.0/axios.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/humanize-duration/3.15.3/humanize-duration.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.bundle.min.js"></script>
         <script type="text/javascript">
         var vueApp;
 
@@ -58,7 +57,7 @@
         function setLoader(id, state) {
             var element = document.getElementById(id);
             if (element) {
-                var cn = "loader";
+                let cn = "loader";
                 switch (state) {
                     case "loading":
                         cn += " loader-loading";
@@ -74,60 +73,42 @@
         }
 
         function getStatus() {
-            xhr=j();
-            xhr.open("GET", "api/status");
-            xhr.onreadystatechange=function() {
-                if (xhr.readyState==4 && xhr.status>=200 && xhr.status<300) {
-                    var reply = JSON.parse(xhr.responseText);
-                    vueApp.properties.length = 0; // clear old data
-                    var property;
-                    reply.status.forEach(function(prop) {
-                        if (prop.type === "seconds") {
-                            prop.displayValue = humanizeDuration(prop.value*1000);
-                        }
-                        vueApp.properties.push(prop);
-                    });
-                    vueApp.properties.hostname = reply.hostname;
-                    vueApp.properties.ipaddr = reply.ipaddr;
-                    setLoader("status-loader", "done");
-                }
-            }
             setLoader("status-loader", "loading");
-            xhr.send();
+            axios.get("/api/status").then(function(response) {
+                vueApp.properties.length = 0; // clear old data
+                for (let prop of response.data.status) {
+                    if (prop.type === "seconds") {
+                        prop.displayValue = humanizeDuration(prop.value*1000);
+                    }
+                    vueApp.properties.push(prop);
+                }
+                vueApp.properties.hostname = response.data.hostname;
+                vueApp.properties.ipaddr = response.data.ipaddr;
+                setLoader("status-loader", "done");
+            });
         }
 
         function getEnv() {
-            xhr=j();
-            xhr.open("GET", "api/env");
-            xhr.onreadystatechange=function() {
-                if (xhr.readyState==4 && xhr.status>=200 && xhr.status<300) {
-                    vueApp.env = JSON.parse(xhr.responseText);
-                    setLoader("env-loader", "done");
-                }
-            }
             setLoader("env-loader", "loading");
-            xhr.send();
+            axios.get("/api/env").then(function(response) {
+                vueApp.env = response.data;
+                setLoader("env-loader", "done");
+            });
         }
 
         function getHistory() {
-            xhr=j();
-            xhr.open("GET", "api/history");
-            xhr.onreadystatechange=function() {
-                if (xhr.readyState==4 && xhr.status>=200 && xhr.status<300) {
-                    let response = JSON.parse(xhr.responseText);
-                    let history = response.history;
-                    let time = Date.now();
-                    let interval = response.interval;
-                    for (let entry of history) {
-                        entry.time = new Date(time);
-                        time -= interval;
-                    }
-                    vueApp.history = history;
-                    setLoader("history-loader", "done");
-                }
-            }
             setLoader("history-loader", "loading");
-            xhr.send();
+            axios.get("/api/history").then(function(response) {
+                let history = response.data.history;
+                let time = Date.now();
+                let interval = response.data.interval;
+                for (let entry of history) {
+                    entry.time = new Date(time);
+                    time -= interval;
+                }
+                vueApp.history = history;
+                setLoader("history-loader", "done");
+            });
         }
 
         function init() {
