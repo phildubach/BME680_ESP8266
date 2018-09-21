@@ -5,6 +5,7 @@
 #include <Adafruit_BME680.h>
 #include <MD5Builder.h>
 #include <EEPROM.h>
+#include <time.h>
 
 #if defined(ESP8266)
 
@@ -36,6 +37,7 @@
 #define INVALID_TEMPERATURE -999
 
 struct bmeSample_s {
+  time_t time;
   float temperature;
   float pressure;
   float humidity;
@@ -47,6 +49,8 @@ static unsigned int bmeHistoryIndex = 0;
 static unsigned int bmeHistoryCount = 0;
 // remember number of measurements since last history entry
 static unsigned int measurementCount = 0;
+// UTC time of last measurement
+static time_t sampleTime;
 
 static struct configValues_s {
     unsigned int historyInterval;
@@ -103,8 +107,9 @@ void readConfigValues() {
 }
 
 String getEnvironmentData() {
-  StaticJsonBuffer<128> jsonBuffer;
+  StaticJsonBuffer<200> jsonBuffer;
   JsonObject& root = jsonBuffer.createObject();
+  root["time"] = sampleTime;
   root["temp"] = bme.temperature;
   root["pressure"] = bme.pressure/100.0;
   root["humidity"] = bme.humidity;
@@ -127,8 +132,9 @@ void serveHistory() {
   int i = (bmeHistoryIndex - 1) % BME_HISTORY_LEN;
   while (toSend > 0) {
     toSend -= 1;
-    StaticJsonBuffer<128> jsonBuffer;
+    StaticJsonBuffer<200> jsonBuffer;
     JsonObject& root = jsonBuffer.createObject();
+    root["time"] = bmeHistory[i].time;
     root["temp"] = bmeHistory[i].temperature;
     root["pressure"] = bmeHistory[i].pressure/100.0;
     root["humidity"] = bmeHistory[i].humidity;
@@ -141,10 +147,7 @@ void serveHistory() {
     server.sendContent(sendBuffer);
     i = (i - 1) % BME_HISTORY_LEN;
   }
-  sendBuffer = "],\"interval\":";
-  sendBuffer += BME_SAMPLE_PERIOD_MS * configValues.historyInterval;
-  sendBuffer += "}";
-  server.sendContent(sendBuffer);
+  server.sendContent("]}");
 }
 
 void serveStatus() {
@@ -258,6 +261,14 @@ void setup() {
   server.serveStatic("/", SPIFFS, "/");
   // start the web server
   server.begin();
+
+  configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+  // wait for time to be initialized
+  while (time(NULL) < 100000) {
+    delay(200);
+    // blink fast to indicate we're waiting for SNTP time
+    digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+  }
 }
 
 void loop() {
@@ -281,20 +292,25 @@ void loop() {
 
   // trigger a measurement if one is due
   if ((now - lastMeasure) > BME_SAMPLE_PERIOD_MS) {
-    struct bmeSample_s* entry = &bmeHistory[bmeHistoryIndex];
     lastMeasure = now;
+    sampleTime = time(NULL);
     if (bmeActive && bme.performReading()) {
       Serial.println(getEnvironmentData());
-      entry->temperature = bme.temperature;
-      entry->pressure = bme.pressure;
-      entry->humidity = bme.humidity;
-      entry->gas = bme.gas_resistance;
     } else {
       Serial.println("Failed to perform reading :(");
-      entry->temperature = INVALID_TEMPERATURE;
     }
     if (++measurementCount >= configValues.historyInterval) {
+      struct bmeSample_s* entry = &bmeHistory[bmeHistoryIndex];
       measurementCount = 0;
+      entry->time = sampleTime;
+      if (bmeActive) {
+        entry->temperature = bme.temperature;
+        entry->pressure = bme.pressure;
+        entry->humidity = bme.humidity;
+        entry->gas = bme.gas_resistance;
+      } else {
+        entry->temperature = INVALID_TEMPERATURE;
+      }
       bmeHistoryIndex = (bmeHistoryIndex + 1) % BME_HISTORY_LEN;
       if (bmeHistoryCount < BME_HISTORY_LEN) {
         bmeHistoryCount += 1;
