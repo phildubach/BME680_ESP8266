@@ -54,6 +54,7 @@ static time_t sampleTime;
 
 static struct configValues_s {
     unsigned int historyInterval;
+    bool sleepOnReset;
     // when adding more values, keep the hash at the end!
     uint8_t hash[16];
 } configValues;
@@ -79,13 +80,13 @@ bool checkConfigHash() {
     MD5Builder builder;
     uint8_t hash[16];
     bool ret;
-    int len = sizeof(struct configValues_s) - 16;
+    int len = offsetof(configValues_s, hash);
     builder.begin();
     builder.add((uint8_t *)&configValues, len);
     builder.calculate();
     builder.getBytes(hash);
     ret = (memcmp(hash, configValues.hash, 16) == 0);
-    memcpy(configValues.hash, hash, 16);    
+    memcpy(configValues.hash, hash, 16);
     return ret;
 }
 
@@ -102,6 +103,7 @@ void readConfigValues() {
         Serial.println("EEPROM data corrupt; initializing");
         // write defaults
         configValues.historyInterval = BME_DEFAULT_HISTORY_INTERVAL;
+        configValues.sleepOnReset = false;
         writeConfigValues();
     }
 }
@@ -170,10 +172,10 @@ void serveConfig() {
   if (server.method() == HTTP_PUT) {
     String postData = server.arg("plain");
     if (postData != NULL) {
+        bool needWrite = false;
         JsonObject& root = jsonBuffer.parseObject(postData, 1);
-        unsigned int interval = root.get<unsigned int>("historyInterval");
-        jsonBuffer.clear();
-        if (interval != 0) {
+        if (root.is<unsigned int>("historyInterval")) {
+            unsigned int interval = root.get<unsigned int>("historyInterval");
             if (configValues.historyInterval - measurementCount > interval) {
                 // remaining time to next record is greater than the new
                 // interval; shorten to new interval
@@ -181,20 +183,32 @@ void serveConfig() {
             }
             if (configValues.historyInterval != interval) {
                 configValues.historyInterval = interval;
-                writeConfigValues();
+                needWrite = true;
             }
+        }
+        if (root.is<bool>("sleepOnReset")) {
+            bool sleepOnReset = root.get<bool>("sleepOnReset");
+            if (configValues.sleepOnReset != sleepOnReset) {
+                configValues.sleepOnReset = sleepOnReset;
+                needWrite = true;
+            }
+        }
+        if (needWrite) {
+            writeConfigValues();
         }
     }
   }
+  jsonBuffer.clear();
   JsonObject& root = jsonBuffer.createObject();
   root["historyInterval"] = configValues.historyInterval;
+  root["sleepOnReset"] = configValues.sleepOnReset;
   sendBuffer = "";
   root.printTo(sendBuffer);
   server.send(200, MIME_JSON, sendBuffer);
 }
 
 void setup() {
-  struct rst_info *resetInfo = ESP.getResetInfoPtr(); 
+  bool wakeFromDeepSleep = (ESP.getResetInfoPtr()->reason == REASON_DEEP_SLEEP_AWAKE);
 
   sendBuffer.reserve(SEND_BUFFER_LEN);
   EEPROM.begin(sizeof(struct configValues_s));
@@ -203,12 +217,12 @@ void setup() {
   Serial.begin(115200);
   Serial.println("\nReboot");
 
-  if (resetInfo->reason != REASON_DEEP_SLEEP_AWAKE) {
+  readConfigValues();
+
+  if (configValues.sleepOnReset && !wakeFromDeepSleep) {
     Serial.println("Initiating deep sleep");
     ESP.deepSleep(ESP.deepSleepMax());
   }
-
-  readConfigValues();
 
   // initialize (software) I2C bus for the given pins
   Wire.begin(SDA, SCL);
@@ -283,7 +297,7 @@ void loop() {
   ArduinoOTA.handle();
 
   unsigned long now = millis();
-  
+
   // toggle the LED if it is due
   if ((now - lastLedToggle) > LED_TOGGLE_PERIOD_MS) {
     lastLedToggle = now;

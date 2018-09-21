@@ -95,7 +95,11 @@
             setLoader("config-loader", "loading");
             let promise;
             if (save) {
-                promise = axios.put("/api/config", vueApp.localConfig);
+                let obj = {
+                    historyInterval: vueApp.localConfig.historyInterval,
+                    sleepOnReset: vueApp.localConfig.sleepOnReset
+                };
+                promise = axios.put("/api/config", obj);
             } else {
                 promise = axios.get("/api/config");
             }
@@ -111,6 +115,10 @@
                         }
                     }
                     vueApp.localConfig.historyInterval = value;
+                }
+                if ("sleepOnReset" in response.data) {
+                    let value = response.data.sleepOnReset ? true : false;
+                    vueApp.localConfig.sleepOnReset = vueApp.serverConfig.sleepOnReset = value;
                 }
                 setLoader("config-loader", "done");
             });
@@ -145,8 +153,8 @@
                     properties: [{ name: "Loading...", value: "Loading..." }],
                     env: { temp: 0, pressure: 0, humidity: 0, gas: 0, time: new Date() },
                     history: [],
-                    serverConfig: { historyInterval: 10, standard: true },
-                    localConfig: { historyInterval: 10 },
+                    serverConfig: { historyInterval: 10, standard: true, sleepOnReset: false },
+                    localConfig: { historyInterval: 10, sleepOnReset: false },
                     historyIntervalOptions: [
                         { name: "10 s", value: 10 },
                         { name: "1 min", value: 60 },
@@ -155,8 +163,14 @@
                     ]
                 },
                 computed: {
-                    configChanged: function() {
+                    historyIntervalChanged: function() {
                         return this.serverConfig.historyInterval !== this.localConfig.historyInterval;
+                    },
+                    sleepOnResetChanged: function() {
+                        return this.serverConfig.sleepOnReset !== this.localConfig.sleepOnReset;
+                    },
+                    configChanged: function() {
+                        return this.historyIntervalChanged || this.sleepOnResetChanged;
                     }
                 }
             });
@@ -260,16 +274,22 @@
             <h2>Konfiguration <span id="config-loader" class="loader loader-loading"></span></h2>
             <div class="w3-row">
                 <label>Aufzeichnungsintervall</label>
-                <select class="w3-select w3-border" v-bind:class="{ 'w3-pale-red': configChanged }" v-model="localConfig.historyInterval">
+                <select class="w3-select w3-border" v-bind:class="{ 'w3-pale-red': historyIntervalChanged }" v-model="localConfig.historyInterval">
                     <option v-if="!serverConfig.standard" disabled :value="serverConfig.historyInterval">
                         Unverändert ({{serverConfig.historyInterval}} s)
                     </option>
                     <option v-for="option in historyIntervalOptions" v-bind:value="option.value">{{option.name}}</option>
                 </select>
             </div>
+            <div class="w3-row">
+                <input type="checkbox" id="checkReset" class="w3-check"
+                       v-model="localConfig.sleepOnReset">
+                <label for="checkReset" v-bind:class="{'w3-pale-red':sleepOnResetChanged}">Reset-Taste schaltet ein/aus</label>
+            </div>
             <div class="w3-bar w3-padding-16">
                 <input class="w3-button w3-right w3-teal" type="submit" value="Reload" onclick="getConfig()" />
-                <input class="w3-button w3-right w3-teal w3-margin-right" type="submit" value="Save" v-show="configChanged" onclick="getConfig(true)" />
+                <input class="w3-button w3-right w3-teal w3-margin-right" type="submit"
+                       value="Speichern" v-show="configChanged" onclick="getConfig(true)" />
             </div>
         </div>
     </div>
