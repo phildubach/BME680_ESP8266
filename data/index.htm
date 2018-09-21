@@ -154,6 +154,11 @@
                         { name: "10 min", value: 600 },
                         { name: "1 h", value: 3600 }
                     ]
+                },
+                computed: {
+                    configChanged: function() {
+                        return this.serverConfig.historyInterval !== this.localConfig.historyInterval;
+                    }
                 }
             });
             getStatus(); // obtain IP address and host name
@@ -251,26 +256,18 @@
 
         <div id="config" class="tab w3-container">
             <h2>Konfiguration <span id="config-loader" class="loader loader-loading"></span></h2>
-            <table class="w3-table w3-striped w3-border">
-                <tr class="w3-teal">
-                    <th>Variable</th>
-                    <th>Wert</th>
-                </tr>
-                <tr>
-                    <td>Aufzeichnungsintervall</td>
-                    <td>
-                        <select v-model="localConfig.historyInterval">
-                            <option v-if="!serverConfig.standard" disabled value="{{serverConfig.historyInterval}}">
-                                Unverändert ({{serverConfig.historyInterval}} s)
-                            </option>
-                            <option v-for="option in historyIntervalOptions" v-bind:value="option.value">{{option.name}}</option>
-                        </select>
-                    </td>
-                </tr>
-            </table>
-            <div class="w3-bar">
+            <div class="w3-row">
+                <label>Aufzeichnungsintervall</label>
+                <select class="w3-select w3-border" v-bind:class="{ 'w3-pale-red': configChanged }" v-model="localConfig.historyInterval">
+                    <option v-if="!serverConfig.standard" disabled :value="serverConfig.historyInterval">
+                        Unverändert ({{serverConfig.historyInterval}} s)
+                    </option>
+                    <option v-for="option in historyIntervalOptions" v-bind:value="option.value">{{option.name}}</option>
+                </select>
+            </div>
+            <div class="w3-bar w3-padding-16">
                 <input class="w3-button w3-right w3-teal" type="submit" value="Reload" onclick="getConfig()" />
-                <input class="w3-button w3-right w3-teal" type="submit" value="Save" onclick="getConfig(true)" />
+                <input class="w3-button w3-right w3-teal w3-margin-right" type="submit" value="Save" v-show="configChanged" onclick="getConfig(true)" />
             </div>
         </div>
     </div>
