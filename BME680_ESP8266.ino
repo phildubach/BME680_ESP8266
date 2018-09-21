@@ -3,6 +3,8 @@
 #include <ArduinoJson.h>
 #include <FS.h>
 #include <Adafruit_BME680.h>
+#include <MD5Builder.h>
+#include <EEPROM.h>
 
 #if defined(ESP8266)
 
@@ -43,9 +45,14 @@ struct bmeSample_s {
 static struct bmeSample_s bmeHistory[BME_HISTORY_LEN];
 static unsigned int bmeHistoryIndex = 0;
 static unsigned int bmeHistoryCount = 0;
-static unsigned int bmeHistoryInterval = BME_DEFAULT_HISTORY_INTERVAL;
 // remember number of measurements since last history entry
 static unsigned int measurementCount = 0;
+
+static struct configValues_s {
+    unsigned int historyInterval;
+    // when adding more values, keep the hash at the end!
+    uint8_t hash[16];
+} configValues;
 
 #define MIME_JSON "application/json"
 
@@ -64,10 +71,36 @@ static String sendBuffer = String();
 Adafruit_BME680 bme;
 bool bmeActive = false;
 
-struct mimeMap_s {
-  const char* extension;
-  const char* mimeType;
-};
+bool checkConfigHash() {
+    MD5Builder builder;
+    uint8_t hash[16];
+    bool ret;
+    int len = sizeof(struct configValues_s) - 16;
+    builder.begin();
+    builder.add((uint8_t *)&configValues, len);
+    builder.calculate();
+    builder.getBytes(hash);
+    ret = (memcmp(hash, configValues.hash, 16) == 0);
+    memcpy(configValues.hash, hash, 16);    
+    return ret;
+}
+
+void writeConfigValues() {
+    Serial.println("Writing EEPROM");
+    checkConfigHash(); // fill in the proper hash
+    EEPROM.put(0, configValues);
+    EEPROM.commit();
+}
+
+void readConfigValues() {
+    EEPROM.get(0, configValues);
+    if (!checkConfigHash()) {
+        Serial.println("EEPROM data corrupt; initializing");
+        // write defaults
+        configValues.historyInterval = BME_DEFAULT_HISTORY_INTERVAL;
+        writeConfigValues();
+    }
+}
 
 String getEnvironmentData() {
   StaticJsonBuffer<128> jsonBuffer;
@@ -109,7 +142,7 @@ void serveHistory() {
     i = (i - 1) % BME_HISTORY_LEN;
   }
   sendBuffer = "],\"interval\":";
-  sendBuffer += BME_SAMPLE_PERIOD_MS * bmeHistoryInterval;
+  sendBuffer += BME_SAMPLE_PERIOD_MS * configValues.historyInterval;
   sendBuffer += "}";
   server.sendContent(sendBuffer);
 }
@@ -138,17 +171,20 @@ void serveConfig() {
         unsigned int interval = root.get<unsigned int>("historyInterval");
         jsonBuffer.clear();
         if (interval != 0) {
-            if (bmeHistoryInterval - measurementCount > interval) {
+            if (configValues.historyInterval - measurementCount > interval) {
                 // remaining time to next record is greater than the new
                 // interval; shorten to new interval
                 measurementCount = 0;
             }
-            bmeHistoryInterval = interval;
+            if (configValues.historyInterval != interval) {
+                configValues.historyInterval = interval;
+                writeConfigValues();
+            }
         }
     }
   }
   JsonObject& root = jsonBuffer.createObject();
-  root["historyInterval"] = bmeHistoryInterval;
+  root["historyInterval"] = configValues.historyInterval;
   sendBuffer = "";
   root.printTo(sendBuffer);
   server.send(200, MIME_JSON, sendBuffer);
@@ -156,7 +192,9 @@ void serveConfig() {
 
 void setup() {
   struct rst_info *resetInfo = ESP.getResetInfoPtr(); 
+
   sendBuffer.reserve(SEND_BUFFER_LEN);
+  EEPROM.begin(sizeof(struct configValues_s));
 
   // initialize serial port
   Serial.begin(115200);
@@ -166,6 +204,8 @@ void setup() {
     Serial.println("Initiating deep sleep");
     ESP.deepSleep(ESP.deepSleepMax());
   }
+
+  readConfigValues();
 
   // initialize (software) I2C bus for the given pins
   Wire.begin(SDA, SCL);
@@ -253,7 +293,7 @@ void loop() {
       Serial.println("Failed to perform reading :(");
       entry->temperature = INVALID_TEMPERATURE;
     }
-    if (++measurementCount >= bmeHistoryInterval) {
+    if (++measurementCount >= configValues.historyInterval) {
       measurementCount = 0;
       bmeHistoryIndex = (bmeHistoryIndex + 1) % BME_HISTORY_LEN;
       if (bmeHistoryCount < BME_HISTORY_LEN) {
