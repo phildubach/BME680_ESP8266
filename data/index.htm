@@ -150,7 +150,7 @@
                 for (let entry of history) {
                     let time = new Date(entry.time * 1000);
                     entry.time = time;
-                    temp.push({ x: time, y: entry.temperature });
+                    temp.push({ x: time, y: entry.temp });
                     pressure.push({ x: time, y: entry.pressure });
                     humidity.push({ x: time, y: entry.humidity });
                     gas.push({ x: time, y: entry.gas });
