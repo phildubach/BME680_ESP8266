@@ -147,7 +147,10 @@ void serveHistory() {
       sendBuffer += ",";
     }
     server.sendContent(sendBuffer);
-    i = (i - 1) % BME_HISTORY_LEN;
+    i -= 1;
+    if (i < 0) {
+        i = BME_HISTORY_LEN - 1;
+    }
   }
   server.sendContent("]}");
 }
