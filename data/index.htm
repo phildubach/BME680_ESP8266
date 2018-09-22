@@ -10,15 +10,20 @@
                 body { width: 900px; margin: auto }
             }
             .loader {
-                width: 28px;
-                height: 28px;
-                display: inline-block;
-                vertical-align: text-top;
-                background-size: contain;
-
+                width: 40px;
+                height: 40px;
+                border-radius: 8px;
+                background-repeat: no-repeat;
+                background-image: url("img/reload.svg");
+                color: white;
+                background-color: teal;
+                float: right !important;
+            }
+            .loader:hover {
+                background-color: grey;
             }
             .loader-loading {
-                background-image: url("img/load.svg");
+                background-image: url("img/reload-spin.svg") !important;
             }
         </style>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.5.17/vue.min.js"></script>
@@ -199,7 +204,7 @@
         </div>
 
         <div id="env" class="tab w3-container">
-            <h2>Sensoren <span id="env-loader" class="loader loader-loading"></span></h2>
+            <h2>Sensoren <span id="env-loader" class="loader" onclick="getEnv()"></span></h2>
             <table class="w3-table w3-striped w3-border">
                 <tr class="w3-teal">
                     <th>Variable</th>
@@ -225,13 +230,10 @@
                     <td>Messzeit</td>
                     <td>{{ env.time.toLocaleString() }}</td>
             </table>
-            <div class="w3-bar w3-padding-16">
-                <input class="w3-button w3-right w3-teal" type="submit" value="Reload" onclick="getEnv()" />
-            </div>
         </div>
 
         <div id="history" class="tab w3-container">
-            <h2>History <span id="history-loader" class="loader loader-loading"></span></h2>
+            <h2>History <span id="history-loader" class="loader" onclick="getHistory()"></span></h2>
             <table class="w3-table w3-striped w3-border w3-centered w3-tiny">
                 <tr class="w3-teal">
                     <th>Zeit</th>
@@ -248,13 +250,10 @@
                     <td>{{ entry.gas }}</td>
                 </tr>
             </table>
-            <div class="w3-bar w3-padding-16">
-                <input class="w3-button w3-right w3-teal" type="submit" value="Reload" onclick="getHistory()" />
-            </div>
         </div>
 
         <div id="status" class="tab w3-container">
-            <h2>Status <span id="status-loader" class="loader loader-loading"></span></h2>
+            <h2>Status <span id="status-loader" class="loader" onclick="getStatus()"></span></h2>
             <table class="w3-table w3-striped w3-border">
                 <tr class="w3-teal">
                     <th>Variable</th>
@@ -265,13 +264,10 @@
                     <td>{{ prop.displayValue ? prop.displayValue : prop.value }}</td>
                 </tr>
             </table>
-            <div class="w3-bar w3-padding-16">
-                <input class="w3-button w3-right w3-teal" type="submit" value="Reload" onclick="getStatus()" />
-            </div>
         </div>
 
         <div id="config" class="tab w3-container">
-            <h2>Konfiguration <span id="config-loader" class="loader loader-loading"></span></h2>
+            <h2>Konfiguration <span id="config-loader" class="loader" onclick="getConfig()"></span></h2>
             <div class="w3-row">
                 <label>Aufzeichnungsintervall</label>
                 <select class="w3-select w3-border" v-bind:class="{ 'w3-pale-red': historyIntervalChanged }" v-model="localConfig.historyInterval">
@@ -287,8 +283,7 @@
                 <label for="checkReset" v-bind:class="{'w3-pale-red':sleepOnResetChanged}">Reset-Taste schaltet ein/aus</label>
             </div>
             <div class="w3-bar w3-padding-16">
-                <input class="w3-button w3-right w3-teal" type="submit" value="Reload" onclick="getConfig()" />
-                <input class="w3-button w3-right w3-teal w3-margin-right" type="submit"
+                <input class="w3-button w3-right w3-teal w3-round-large" type="submit"
                        value="Speichern" v-show="configChanged" onclick="getConfig(true)" />
             </div>
         </div>
