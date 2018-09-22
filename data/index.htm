@@ -212,6 +212,16 @@
                         label: "Luftdruck [mbar]",
                         yAxisID: "pressure",
                         radius: 0,
+                        borderColor: 'Black',
+                        backgroundColor: 'rgba(0,0,0,0.1)',
+                        lineTension: 0,
+                        fill: false
+                    },
+                    {
+                        data: [],
+                        label: "Feuchte [%]",
+                        yAxisID: "humidity",
+                        radius: 0,
                         borderColor: 'Blue',
                         backgroundColor: 'rgba(0,0,255,0.1)',
                         lineTension: 0,
@@ -219,21 +229,13 @@
                     },
                     {
                         data: [],
-                        label: "Feuchte",
-                        yAxisID: "humidity",
-                        radius: 0,
-                        borderColor: 'Teal',
-                        backgroundColor: 'rgba(0,128,128,0.1)',
-                        lineTension: 0
-                    },
-                    {
-                        data: [],
                         label: "Luftqualität",
                         yAxisID: "gas",
                         radius: 0,
                         borderColor: 'Green',
-                        backgroundColor: 'rgba(0,256,0,0.1)',
-                        lineTension: 0
+                        backgroundColor: 'rgba(0,255,0,0.1)',
+                        lineTension: 0,
+                        fill: false
                     },]
                 },
                 options: {
@@ -260,7 +262,7 @@
                                 stepSize: 50,
                                 suggestedMax: 1200,
                                 suggestedMin: 950,
-                                fontColor: "Blue"
+                                fontColor: "Black"
                             }
                         },
                         {
@@ -268,9 +270,9 @@
                             position: "right",
                             ticks: {
                                 stepSize: 10,
-                                suggestedMin: 30,
-                                suggestedMax: 80,
-                                fontColor: "Teal"
+                                suggestedMin: 0,
+                                suggestedMax: 100,
+                                fontColor: "Blue"
                             }
                         },
                         {
