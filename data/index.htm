@@ -48,7 +48,10 @@
                     getEnv();
                     break;
                 case "history":
-                    getHistory();
+                    if (vueApp.history.length == 0) getHistory();
+                    break;
+                case "plot":
+                    if (vueApp.history.length == 0) getHistory();
                     break;
                 case "config":
                     getConfig();
@@ -62,9 +65,9 @@
             }
         }
 
-        function setLoader(id, state) {
-            var element = document.getElementById(id);
-            if (element) {
+        function setLoader(name, state) {
+            var elements = document.getElementsByName(name);
+            for (let element of elements) {
                 let cn = "loader";
                 switch (state) {
                     case "loading":
@@ -143,9 +146,20 @@
             setLoader("history-loader", "loading");
             axios.get("/api/history").then(function(response) {
                 let history = response.data.history;
+                let temp = [], pressure = [], humidity = [], gas = [];
                 for (let entry of history) {
-                    entry.time = new Date(entry.time * 1000);
+                    let time = new Date(entry.time * 1000);
+                    entry.time = time;
+                    temp.push({ x: time, y: entry.temperature });
+                    pressure.push({ x: time, y: entry.pressure });
+                    humidity.push({ x: time, y: entry.humidity });
+                    gas.push({ x: time, y: entry.gas });
                 }
+                chart.data.datasets[0].data = temp;
+                chart.data.datasets[1].data = pressure;
+                chart.data.datasets[2].data = humidity;
+                chart.data.datasets[3].data = gas;
+                chart.update();
                 vueApp.history = history;
                 setLoader("history-loader", "done");
             });
@@ -179,6 +193,99 @@
                     }
                 }
             });
+            chart = new Chart(document.getElementById("chart"), {
+                type: 'line',
+                data: {
+                    datasets: [
+                    {
+                        data: [],
+                        label: "Temperatur [\xb0C]",
+                        yAxisID: "temp",
+                        radius: 0,
+                        borderColor: 'Red',
+                        backgroundColor: 'rgba(255,0,0,0.1)',
+                        lineTension: 0,
+                        fill: false
+                    },
+                    {
+                        data: [],
+                        label: "Luftdruck [mbar]",
+                        yAxisID: "pressure",
+                        radius: 0,
+                        borderColor: 'Blue',
+                        backgroundColor: 'rgba(0,0,255,0.1)',
+                        lineTension: 0,
+                        fill: false
+                    },
+                    {
+                        data: [],
+                        label: "Feuchte",
+                        yAxisID: "humidity",
+                        radius: 0,
+                        borderColor: 'Teal',
+                        backgroundColor: 'rgba(0,128,128,0.1)',
+                        lineTension: 0
+                    },
+                    {
+                        data: [],
+                        label: "Luftqualität",
+                        yAxisID: "gas",
+                        radius: 0,
+                        borderColor: 'Green',
+                        backgroundColor: 'rgba(0,256,0,0.1)',
+                        lineTension: 0
+                    },]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    legend: { display: true },
+                    scales: {
+                        xAxes: [{
+                            type: 'time'
+                        }],
+                        yAxes: [{
+                            id: "temp",
+                            position: "left",
+                            ticks: {
+                                stepSize: 10,
+                                suggestedMax: 40,
+                                suggestedMin: -10,
+                                fontColor: "Red"
+                            }
+                        },
+                        {
+                            id: "pressure",
+                            position: "left",
+                            ticks: {
+                                stepSize: 50,
+                                suggestedMax: 1200,
+                                suggestedMin: 950,
+                                fontColor: "Blue"
+                            }
+                        },
+                        {
+                            id: "humidity",
+                            position: "right",
+                            ticks: {
+                                stepSize: 10,
+                                suggestedMin: 30,
+                                suggestedMax: 80,
+                                fontColor: "Teal"
+                            }
+                        },
+                        {
+                            id: "gas",
+                            position: "right",
+                            ticks: {
+                                stepSize: 100,
+                                suggestedMin: 0,
+                                suggestedMax: 500,
+                                fontColor: "Green"
+                            }
+                        }]
+                    }
+                }
+            });
             getStatus(); // obtain IP address and host name
             var frag = window.location.hash.substring(1);
             if (frag) {
@@ -199,12 +306,13 @@
         <div class="w3-bar w3-black">
             <button class="w3-bar-item w3-button" onclick="openTab('env')">BME680</button>
             <button class="w3-bar-item w3-button" onclick="openTab('history')">History</button>
+            <button class="w3-bar-item w3-button" onclick="openTab('plot')">Verlauf</button>
             <button class="w3-bar-item w3-button" onclick="openTab('status')">Status</button>
             <button class="w3-bar-item w3-button" onclick="openTab('config')">Config</button>
         </div>
 
         <div id="env" class="tab w3-container">
-            <h2>Sensoren <span id="env-loader" class="loader" onclick="getEnv()"></span></h2>
+            <h2>Sensoren <span name="env-loader" class="loader" onclick="getEnv()"></span></h2>
             <table class="w3-table w3-striped w3-border">
                 <tr class="w3-teal">
                     <th>Variable</th>
@@ -233,7 +341,7 @@
         </div>
 
         <div id="history" class="tab w3-container">
-            <h2>History <span id="history-loader" class="loader" onclick="getHistory()"></span></h2>
+            <h2>History <span name="history-loader" class="loader" onclick="getHistory()"></span></h2>
             <table class="w3-table w3-striped w3-border w3-centered w3-tiny">
                 <tr class="w3-teal">
                     <th>Zeit</th>
@@ -253,7 +361,7 @@
         </div>
 
         <div id="status" class="tab w3-container">
-            <h2>Status <span id="status-loader" class="loader" onclick="getStatus()"></span></h2>
+            <h2>Status <span name="status-loader" class="loader" onclick="getStatus()"></span></h2>
             <table class="w3-table w3-striped w3-border">
                 <tr class="w3-teal">
                     <th>Variable</th>
@@ -266,8 +374,15 @@
             </table>
         </div>
 
+        <div id="plot" class="tab w3-container" style="display:none">
+            <h2>Verlauf <span name="history-loader" class="loader" onclick="getHistory()"></span></h2>
+            <div id="chart-container" style="height:400px">
+                <canvas id="chart"></canvas>
+            </div>
+        </div>
+
         <div id="config" class="tab w3-container">
-            <h2>Konfiguration <span id="config-loader" class="loader" onclick="getConfig()"></span></h2>
+            <h2>Konfiguration <span name="config-loader" class="loader" onclick="getConfig()"></span></h2>
             <div class="w3-row">
                 <label>Aufzeichnungsintervall</label>
                 <select class="w3-select w3-border" v-bind:class="{ 'w3-pale-red': historyIntervalChanged }" v-model="localConfig.historyInterval">
