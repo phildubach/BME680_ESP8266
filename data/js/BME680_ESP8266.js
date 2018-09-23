@@ -2,12 +2,6 @@
 var vueApp, chart;
 
 function openTab(ident) {
-    var element = document.getElementById(ident);
-    if (!element) {
-        // default to the env tab
-        ident = "env";
-        element = document.getElementById(ident);
-    }
     switch(ident) {
         case "status":
             getStatus();
@@ -22,12 +16,7 @@ function openTab(ident) {
             getConfig();
             break;
     }
-    if (element) {
-        var tabs = document.getElementsByClassName("tab");
-        for (let tab of tabs) {
-            tab.style.display = (tab === element) ? "block" : "none";
-        }
-    }
+    vueApp.activeTab = ident;
 }
 
 function setLoader(name, state) {
@@ -153,7 +142,8 @@ function init() {
                 { name: "10 min", value: 600 },
                 { name: "1 h", value: 3600 }
             ],
-            showTable: false
+            showTable: false,
+            activeTab: "env"
         },
         computed: {
             historyIntervalChanged: function() {

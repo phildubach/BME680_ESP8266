@@ -19,16 +19,20 @@
            <div class="w3-bar-item w3-right">{{ properties.ipaddr }}</div>
            <div class="w3-bar-item w3-right">{{ properties.hostname }}</div>
         </div>
-        <div class="w3-bar w3-black">
-            <button class="w3-bar-item w3-button" onclick="openTab('env')">BME680</button>
-            <button class="w3-bar-item w3-button" onclick="openTab('history')">Verlauf</button>
-            <button class="w3-bar-item w3-button" onclick="openTab('status')">Status</button>
-            <button class="w3-bar-item w3-button" onclick="openTab('config')">Config</button>
+        <div class="tab-bar w3-bar w3-black">
+            <button class="w3-bar-item w3-button" v-bind:class="activeTab=='env'?'active':''"
+                onclick="openTab('env')">Sensor</button>
+            <button class="w3-bar-item w3-button" v-bind:class="activeTab=='history'?'active':''"
+                 onclick="openTab('history')">Verlauf</button>
+            <button class="w3-bar-item w3-button" v-bind:class="activeTab=='status'?'active':''"
+                onclick="openTab('status')">Status</button>
+            <button class="w3-bar-item w3-button" v-bind:class="activeTab=='config'?'active':''"
+                onclick="openTab('config')">Config</button>
         </div>
 
-        <div id="env" class="tab w3-container">
+        <div id="env" v-show="activeTab == 'env'" class="w3-container">
             <div class="title-bar">
-                <h2>Sensoren</h2>
+                <h2>Sensor</h2>
                 <span name="env-loader" class="loader" onclick="getEnv()"></span>
             </div>
             <table class="w3-table w3-striped w3-border">
@@ -58,7 +62,7 @@
             </table>
         </div>
 
-        <div id="history" class="tab w3-container">
+        <div id="history" v-show="activeTab == 'history'" class="w3-container">
             <div class="title-bar">
                 <h2>Verlauf</h2>
                 <span name="history-loader" class="loader" onclick="getHistory()"></span>
@@ -88,7 +92,7 @@
             </div>
         </div>
 
-        <div id="status" class="tab w3-container">
+        <div id="status" v-show="activeTab == 'status'" class="w3-container">
             <div class="title-bar">
                 <h2>Status</h2>
                 <span name="status-loader" class="loader" onclick="getStatus()"></span>
@@ -105,7 +109,7 @@
             </table>
         </div>
 
-        <div id="config" class="tab w3-container">
+        <div id="config" v-show="activeTab == 'config'" class="w3-container">
             <div class="title-bar">
                 <h2>Konfiguration</h2>
                 <span name="config-loader" class="loader" onclick="getConfig()"></span>

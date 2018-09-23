@@ -17,6 +17,18 @@
 .loader-error {
     background-color: red !important;
 }
+.tab-bar {
+    padding: 8px 8px 0px 8px;
+}
+.tab-bar button {
+    border-radius: 8px 8px 0px 0px;
+    background-color: gray;
+    margin-right: 2px;
+}
+.tab-bar button.active {
+    background-color: white;
+    color: black;
+}
 .title-bar h2 {
     float: left;
 }
