@@ -12,21 +12,29 @@
             .loader {
                 width: 40px;
                 height: 40px;
-                border-radius: 8px;
                 background-repeat: no-repeat;
                 background-image: url("img/reload.svg");
-                color: white;
                 background-color: teal;
-                float: right !important;
             }
             .loader:hover {
-                background-color: grey;
+                background-color: grey !important;
             }
             .loader-loading {
                 background-image: url("img/reload-spin.svg") !important;
             }
             .loader-error {
                 background-color: red !important;
+            }
+            .title-bar h2 {
+                float: left;
+            }
+            .title-bar span {
+                border-radius: 8px;
+                background-color: teal;
+                color: white;
+                height: 40px;
+                margin: 10px 0px 10px 8px;
+                float: right !important;
             }
         </style>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.5.17/vue.min.js"></script>
@@ -51,10 +59,7 @@
                     getEnv();
                     break;
                 case "history":
-                    if (vueApp.history.length == 0) getHistory();
-                    break;
-                case "plot":
-                    if (vueApp.history.length == 0) getHistory();
+                    getHistory();
                     break;
                 case "config":
                     getConfig();
@@ -190,7 +195,8 @@
                         { name: "1 min", value: 60 },
                         { name: "10 min", value: 600 },
                         { name: "1 h", value: 3600 }
-                    ]
+                    ],
+                    showTable: false
                 },
                 computed: {
                     historyIntervalChanged: function() {
@@ -318,14 +324,16 @@
         </div>
         <div class="w3-bar w3-black">
             <button class="w3-bar-item w3-button" onclick="openTab('env')">BME680</button>
-            <button class="w3-bar-item w3-button" onclick="openTab('history')">History</button>
-            <button class="w3-bar-item w3-button" onclick="openTab('plot')">Verlauf</button>
+            <button class="w3-bar-item w3-button" onclick="openTab('history')">Verlauf</button>
             <button class="w3-bar-item w3-button" onclick="openTab('status')">Status</button>
             <button class="w3-bar-item w3-button" onclick="openTab('config')">Config</button>
         </div>
 
         <div id="env" class="tab w3-container">
-            <h2>Sensoren <span name="env-loader" class="loader" onclick="getEnv()"></span></h2>
+            <div class="title-bar">
+                <h2>Sensoren</h2>
+                <span name="env-loader" class="loader" onclick="getEnv()"></span>
+            </div>
             <table class="w3-table w3-striped w3-border">
                 <tr class="w3-teal">
                     <th>Variable</th>
@@ -354,27 +362,40 @@
         </div>
 
         <div id="history" class="tab w3-container">
-            <h2>History <span name="history-loader" class="loader" onclick="getHistory()"></span></h2>
-            <table class="w3-table w3-striped w3-border w3-centered w3-tiny">
-                <tr class="w3-teal">
-                    <th>Zeit</th>
-                    <th>Temperatur</th>
-                    <th>Druck</th>
-                    <th>Feuchte</th>
-                    <th>Luftqualität</th>
-                </tr>
-                <tr v-for="entry in history">
-                    <td>{{ entry.time.toLocaleString() }}</td>
-                    <td>{{ entry.temp }}</td>
-                    <td>{{ entry.pressure }}</td>
-                    <td>{{ entry.humidity }}</td>
-                    <td>{{ entry.gas }}</td>
-                </tr>
-            </table>
+            <div class="title-bar">
+                <h2>Verlauf</h2>
+                <span name="history-loader" class="loader" onclick="getHistory()"></span>
+                <span class="w3-button title-button" v-show="!showTable" v-on:click="showTable=true">Tabelle</span>
+                <span class="w3-button title-button" v-show="showTable" v-on:click="showTable=false">Grafik</span>
+            </div>
+            <div id="table-container" v-show="showTable">
+                <table class="w3-table w3-striped w3-border w3-centered w3-tiny">
+                    <tr class="w3-teal">
+                        <th>Zeit</th>
+                        <th>Temperatur</th>
+                        <th>Druck</th>
+                        <th>Feuchte</th>
+                        <th>Luftqualität</th>
+                    </tr>
+                    <tr v-for="entry in history">
+                        <td>{{ entry.time.toLocaleString() }}</td>
+                        <td>{{ entry.temp }}</td>
+                        <td>{{ entry.pressure }}</td>
+                        <td>{{ entry.humidity }}</td>
+                        <td>{{ entry.gas }}</td>
+                    </tr>
+                </table>
+            </div>
+            <div id="chart-container" v-show="!showTable" style="height:400px">
+                <canvas id="chart"></canvas>
+            </div>
         </div>
 
         <div id="status" class="tab w3-container">
-            <h2>Status <span name="status-loader" class="loader" onclick="getStatus()"></span></h2>
+            <div class="title-bar">
+                <h2>Status</h2>
+                <span name="status-loader" class="loader" onclick="getStatus()"></span>
+            </div>
             <table class="w3-table w3-striped w3-border">
                 <tr class="w3-teal">
                     <th>Variable</th>
@@ -387,15 +408,11 @@
             </table>
         </div>
 
-        <div id="plot" class="tab w3-container" style="display:none">
-            <h2>Verlauf <span name="history-loader" class="loader" onclick="getHistory()"></span></h2>
-            <div id="chart-container" style="height:400px">
-                <canvas id="chart"></canvas>
-            </div>
-        </div>
-
         <div id="config" class="tab w3-container">
-            <h2>Konfiguration <span name="config-loader" class="loader" onclick="getConfig()"></span></h2>
+            <div class="title-bar">
+                <h2>Konfiguration</h2>
+                <span name="config-loader" class="loader" onclick="getConfig()"></span>
+            </div>
             <div class="w3-row">
                 <label>Aufzeichnungsintervall</label>
                 <select class="w3-select w3-border" v-bind:class="{ 'w3-pale-red': historyIntervalChanged }" v-model="localConfig.historyInterval">
