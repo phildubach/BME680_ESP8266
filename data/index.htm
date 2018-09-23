@@ -5,38 +5,7 @@
         <title>ESP Wetterstation</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="css/w3.css">
-        <style>
-            @media only screen and (min-width: 900px) {
-                body { width: 900px; margin: auto }
-            }
-            .loader {
-                width: 40px;
-                height: 40px;
-                background-repeat: no-repeat;
-                background-image: url("img/reload.svg");
-                background-color: teal;
-            }
-            .loader:hover {
-                background-color: grey !important;
-            }
-            .loader-loading {
-                background-image: url("img/reload-spin.svg") !important;
-            }
-            .loader-error {
-                background-color: red !important;
-            }
-            .title-bar h2 {
-                float: left;
-            }
-            .title-bar span {
-                border-radius: 8px;
-                background-color: teal;
-                color: white;
-                height: 40px;
-                margin: 10px 0px 10px 8px;
-                float: right !important;
-            }
-        </style>
+        <link rel="stylesheet" href="css/BME680_ESP8266.css">
         <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.5.17/vue.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.18.0/axios.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/humanize-duration/3.15.3/humanize-duration.min.js"></script>

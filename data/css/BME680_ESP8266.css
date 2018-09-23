@@ -1,0 +1,31 @@
+@media only screen and (min-width: 900px) {
+    body { width: 900px; margin: auto }
+}
+.loader {
+    width: 40px;
+    height: 40px;
+    background-repeat: no-repeat;
+    background-image: url("../img/reload.svg");
+    background-color: teal;
+}
+.loader:hover {
+    background-color: grey !important;
+}
+.loader-loading {
+    background-image: url("../img/reload-spin.svg") !important;
+}
+.loader-error {
+    background-color: red !important;
+}
+.title-bar h2 {
+    float: left;
+}
+.title-bar span {
+    border-radius: 8px;
+    background-color: teal;
+    color: white;
+    height: 40px;
+    margin: 10px 0px 10px 8px;
+    float: right !important;
+}
+
