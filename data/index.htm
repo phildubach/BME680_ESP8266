@@ -25,6 +25,9 @@
             .loader-loading {
                 background-image: url("img/reload-spin.svg") !important;
             }
+            .loader-error {
+                background-color: red !important;
+            }
         </style>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.5.17/vue.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.18.0/axios.min.js"></script>
@@ -96,6 +99,8 @@
                 vueApp.properties.hostname = response.data.hostname;
                 vueApp.properties.ipaddr = response.data.ipaddr;
                 setLoader("status-loader", "done");
+            }).catch(function(error) {
+                setLoader("status-loader", "error");
             });
         }
 
@@ -129,6 +134,8 @@
                     vueApp.localConfig.sleepOnReset = vueApp.serverConfig.sleepOnReset = value;
                 }
                 setLoader("config-loader", "done");
+            }).catch(function(error) {
+                setLoader("config-loader", "error");
             });
         }
 
@@ -139,6 +146,8 @@
                 env.time = new Date(env.time * 1000);
                 vueApp.env = env;
                 setLoader("env-loader", "done");
+            }).catch(function(error) {
+                setLoader("env-loader", "error");
             });
         }
 
@@ -162,6 +171,8 @@
                 chart.update();
                 vueApp.history = history;
                 setLoader("history-loader", "done");
+            }).catch(function(error) {
+                setLoader("history-loader", "error");
             });
         }
 
