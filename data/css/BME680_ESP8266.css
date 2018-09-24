@@ -9,13 +9,13 @@
     background-color: teal;
 }
 .loader:hover {
-    background-color: grey !important;
+    background-color: grey;
 }
-.loader-loading {
-    background-image: url("../img/reload-spin.svg") !important;
+.loader.loader-loading {
+    background-image: url("../img/reload-spin.svg");
 }
-.loader-error {
-    background-color: red !important;
+.loader.loader-error {
+    background-color: red;
 }
 .tab-bar {
     padding: 8px 8px 0px 8px;
@@ -38,6 +38,6 @@
     color: white;
     height: 40px;
     margin: 10px 0px 10px 8px;
-    float: right !important;
+    float: right;
 }
 
